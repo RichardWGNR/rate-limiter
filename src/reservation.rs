@@ -4,7 +4,7 @@ use crate::{LocalDateTime, RateLimit};
 pub struct Reservation {
     /// Unix timestamp in seconds when this reservation should act
     pub(crate) time_to_act: LocalDateTime,
-    pub(crate) rate_limit: RateLimit
+    pub(crate) rate_limit: RateLimit,
 }
 
 impl Reservation {

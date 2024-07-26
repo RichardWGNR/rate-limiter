@@ -1,13 +1,13 @@
-pub mod policy;
 pub mod error;
+pub mod policy;
 pub mod storage;
 
 mod rate_limit;
 mod reservation;
 
 use chrono::DateTime;
-use policy::Policy;
 use error::BuilderError;
+use policy::Policy;
 
 pub use rate_limit::RateLimit;
 pub use reservation::Reservation;
@@ -54,16 +54,12 @@ impl<P: Policy> RateLimiterBuilder<P> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::policy::FixedWindowPolicy;
     use crate::storage::InMemoryStorage;
-    use super::*;
 
     #[test]
-    fn abs() {
-
-
-    }
+    fn abs() {}
 }

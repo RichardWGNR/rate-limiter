@@ -1,7 +1,7 @@
-use std::any::Any;
-use std::marker::PhantomData;
 use hashbrown::HashMap;
 use parking_lot::Mutex;
+use std::any::Any;
+use std::marker::PhantomData;
 
 pub trait Storage<Inner, S: State<Inner>> {
     fn fetch(&self, key: &str) -> Option<S>;
@@ -17,14 +17,14 @@ pub trait State<Body>: Clone {
 
 pub struct InMemoryStorage<A: Sized, S: State<A>> {
     store: HashMap<String, Mutex<S>>,
-    _phantom_data: PhantomData<A>
+    _phantom_data: PhantomData<A>,
 }
 
 impl<A: Sized, S: State<A>> InMemoryStorage<A, S> {
     pub fn new() -> Self {
         Self {
             store: HashMap::new(),
-            _phantom_data: Default::default()
+            _phantom_data: Default::default(),
         }
     }
 }
@@ -49,4 +49,3 @@ impl<A: Sized, S: State<A>> Storage<A, S> for InMemoryStorage<A, S> {
         }
     }
 }
-

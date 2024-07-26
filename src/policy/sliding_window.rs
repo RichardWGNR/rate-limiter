@@ -1,36 +1,39 @@
-use std::cmp::{max, min};
-use std::ops::Add;
-use chrono::TimeZone;
 use crate::error::{PolicyError, ReserveError};
 use crate::policy::Policy;
-use crate::{ChronoTimestampMillis, Duration, RateLimit, Reservation};
 use crate::storage::{State, Storage};
-use crate::{LocalTime};
+use crate::LocalTime;
+use crate::{ChronoTimestampMillis, Duration, RateLimit, Reservation};
+use chrono::TimeZone;
+use std::cmp::{max, min};
+use std::ops::Add;
 
 pub struct SlidingWindowPolicy<'a, Store: Storage<SlidingWindowState, SlidingWindowState>> {
     limit: usize,
     key: String,
     interval: chrono::Duration,
-    storage: &'a mut Store
+    storage: &'a mut Store,
 }
 
-impl<Store: Storage<SlidingWindowState, SlidingWindowState>> Policy for SlidingWindowPolicy<'_, Store> {
-    fn reserve(&mut self, tokens: usize, max_time: Option<i64>) -> Result<Reservation, ReserveError> {
+impl<Store: Storage<SlidingWindowState, SlidingWindowState>> Policy
+    for SlidingWindowPolicy<'_, Store>
+{
+    fn reserve(
+        &mut self,
+        tokens: usize,
+        max_time: Option<i64>,
+    ) -> Result<Reservation, ReserveError> {
         if tokens > self.limit {
             // Cannot reserve more tokens than the size of the rate limiter.
             return Err(ReserveError::TooManyTokensError {
                 requested: tokens,
-                max: self.limit
+                max: self.limit,
             });
         }
 
         let mut state = self
             .storage
             .fetch(self.key.as_str())
-            .unwrap_or_else(|| SlidingWindowState::new(
-                self.key.clone(),
-                &self.interval
-            ));
+            .unwrap_or_else(|| SlidingWindowState::new(self.key.clone(), &self.interval));
 
         if state.is_expired() {
             state = SlidingWindowState::create_from_previous_window(&state, &self.interval);
@@ -46,10 +49,8 @@ impl<Store: Storage<SlidingWindowState, SlidingWindowState>> Policy for SlidingW
             let reset_time = if available_tokens > 0 {
                 LocalTime::now()
             } else {
-                LocalTime::timestamp_millis_opt(
-                    &LocalTime,
-                    now.timestamp_millis() + reset_duration
-                ).unwrap()
+                LocalTime::timestamp_millis_opt(&LocalTime, now.timestamp_millis() + reset_duration)
+                    .unwrap()
             };
 
             Reservation {
@@ -59,14 +60,16 @@ impl<Store: Storage<SlidingWindowState, SlidingWindowState>> Policy for SlidingW
                     retry_after: reset_time,
                     accepted: true,
                     limit: self.limit,
-                }
+                },
             }
         } else if available_tokens.is_some() && available_tokens.unwrap() >= tokens {
             state.add(Some(tokens));
             Reservation {
                 time_to_act: now.clone(),
                 rate_limit: RateLimit {
-                    available_tokens: self.get_available_tokens(state.get_hit_count()).unwrap_or(0),
+                    available_tokens: self
+                        .get_available_tokens(state.get_hit_count())
+                        .unwrap_or(0),
                     retry_after: now.clone(),
                     accepted: true,
                     limit: self.limit,
@@ -83,15 +86,16 @@ impl<Store: Storage<SlidingWindowState, SlidingWindowState>> Policy for SlidingW
 
             state.add(Some(tokens));
 
-            let retry_after = LocalTime::timestamp_millis_opt(
-                &LocalTime,
-                wait_duration + now.timestamp_millis()
-            ).unwrap();
+            let retry_after =
+                LocalTime::timestamp_millis_opt(&LocalTime, wait_duration + now.timestamp_millis())
+                    .unwrap();
 
             Reservation {
                 time_to_act: retry_after.clone(),
                 rate_limit: RateLimit {
-                    available_tokens: self.get_available_tokens(state.get_hit_count()).unwrap_or(0),
+                    available_tokens: self
+                        .get_available_tokens(state.get_hit_count())
+                        .unwrap_or(0),
                     retry_after,
                     accepted: false,
                     limit: self.limit,
@@ -116,7 +120,7 @@ impl<'a, Store: Storage<SlidingWindowState, SlidingWindowState>> SlidingWindowPo
         limit: usize,
         key: String,
         interval: Duration,
-        storage: &'a mut Store
+        storage: &'a mut Store,
     ) -> Result<Self, PolicyError> {
         if limit == 0 {
             return Err(PolicyError::ZeroLimitError);
@@ -130,7 +134,7 @@ impl<'a, Store: Storage<SlidingWindowState, SlidingWindowState>> SlidingWindowPo
             limit,
             key,
             interval,
-            storage
+            storage,
         })
     }
 
@@ -149,7 +153,7 @@ pub struct SlidingWindowState {
     hit_count: usize,
     hit_count_for_last_window: usize,
     pub interval: ChronoTimestampMillis,
-    pub window_end_at: ChronoTimestampMillis
+    pub window_end_at: ChronoTimestampMillis,
 }
 
 impl State<SlidingWindowState> for SlidingWindowState {
@@ -169,7 +173,7 @@ impl SlidingWindowState {
             hit_count: 0,
             hit_count_for_last_window: 0,
             interval: interval.num_milliseconds(),
-            window_end_at: LocalTime::now().timestamp_millis() + interval.num_milliseconds()
+            window_end_at: LocalTime::now().timestamp_millis() + interval.num_milliseconds(),
         }
     }
 
@@ -202,7 +206,8 @@ impl SlidingWindowState {
     /// Calculates the sliding window number of request.
     pub fn get_hit_count(&self) -> usize {
         let start_of_window = self.window_end_at - self.interval;
-        let percent_of_current_time_frame = min(LocalTime::now().timestamp_millis() - start_of_window, 1) as usize;
+        let percent_of_current_time_frame =
+            min(LocalTime::now().timestamp_millis() - start_of_window, 1) as usize;
 
         // TODO : Maybe subtract with overflow?
         self.hit_count_for_last_window * (1 - percent_of_current_time_frame) + self.hit_count
@@ -224,7 +229,7 @@ impl SlidingWindowState {
             // I would do it via std::cmp::min, but Ord<f64> is not implemented,
             // so you can't do without that shit
             let value = time_passed as f64 / self.interval as f64;
-            if value > 1.  {
+            if value > 1. {
                 1.
             } else {
                 value
@@ -234,7 +239,8 @@ impl SlidingWindowState {
         // https://github.com/symfony/rate-limiter/blob/f1fbc60e7fed63f1c77bbf8601170cc80fddd95a/Policy/SlidingWindow.php#L98
         let releasable = max(
             1,
-            max_size - ((self.hit_count_for_last_window as f64 * (1. - window_passed)).floor() as usize)
+            max_size
+                - ((self.hit_count_for_last_window as f64 * (1. - window_passed)).floor() as usize),
         );
 
         let remaining_window = (self.interval - time_passed) as usize;
@@ -246,6 +252,7 @@ impl SlidingWindowState {
 
         // TODO : Refactor
 
-        (self.window_end_at - time) + (needed as i64 - releasable as i64) * ((self.interval / max_size as i64))
+        (self.window_end_at - time)
+            + (needed as i64 - releasable as i64) * (self.interval / max_size as i64)
     }
 }

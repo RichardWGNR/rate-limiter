@@ -13,7 +13,11 @@ pub trait Policy {
     // consume(tokens = 1)
     // reserve(tokens = 1, float maxTime = null)
 
-    fn reserve(&mut self, tokens: usize, max_time: Option<i64>) -> Result<Reservation, ReserveError>;
+    fn reserve(
+        &mut self,
+        tokens: usize,
+        max_time: Option<i64>,
+    ) -> Result<Reservation, ReserveError>;
 
     fn consume(&mut self, tokens: usize) -> Result<Reservation, ReserveError>;
 }

@@ -10,19 +10,16 @@ pub enum BuilderError {
 #[derive(Debug)]
 pub enum PolicyError {
     ZeroLimitError,
-    EmptyKeyError
+    EmptyKeyError,
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum ReserveError {
     #[error("Cannot reserve more tokens ({requested}) than the size of the rate limiter ({max})")]
-    TooManyTokensError {
-        requested: usize,
-        max: usize,
-    },
+    TooManyTokensError { requested: usize, max: usize },
 
     #[error("")]
-    MaxWaitDurationExceededError
+    MaxWaitDurationExceededError,
 }
 
 #[derive(Debug)]

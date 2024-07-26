@@ -1,44 +1,43 @@
-use chrono::{TimeZone};
 use crate::error::{PolicyError, ReserveError};
 use crate::policy::Policy;
 use crate::storage::{State, Storage};
-use crate::{LocalDateTime, LocalTime, Duration, Reservation, RateLimit};
+use crate::{Duration, LocalDateTime, LocalTime, RateLimit, Reservation};
+use chrono::TimeZone;
 
 pub struct FixedWindowPolicy<'a, Store: Storage<FixedWindowState, FixedWindowState>> {
     limit: usize,
     key: String,
     interval: chrono::Duration,
-    storage: &'a mut Store
+    storage: &'a mut Store,
 }
 
 impl<Store: Storage<FixedWindowState, FixedWindowState>> Policy for FixedWindowPolicy<'_, Store> {
-    fn reserve(&mut self, tokens: usize, max_time: Option<i64>) -> Result<Reservation, ReserveError> {
+    fn reserve(
+        &mut self,
+        tokens: usize,
+        max_time: Option<i64>,
+    ) -> Result<Reservation, ReserveError> {
         if tokens > self.limit {
             // Cannot reserve more tokens than the size of the rate limiter.
             return Err(ReserveError::TooManyTokensError {
                 requested: tokens,
-                max: self.limit
+                max: self.limit,
             });
         }
 
         let mut state = self
             .storage
             .fetch(self.key.as_str())
-            .unwrap_or_else(|| FixedWindowState::new(
-                self.key.clone(),
-                &self.interval,
-                self.limit
-            ));
+            .unwrap_or_else(|| FixedWindowState::new(self.key.clone(), &self.interval, self.limit));
 
         let now = LocalTime::now();
         let available_tokens = state.get_available_tokens(&now);
 
         let reservation: Reservation = if tokens == 0 {
             let wait_duration = state.calculate_time_for_tokens(tokens, &now);
-            let retry_after = LocalTime::timestamp_millis_opt(
-                &LocalTime,
-                now.timestamp_millis() + wait_duration
-            ).unwrap();
+            let retry_after =
+                LocalTime::timestamp_millis_opt(&LocalTime, now.timestamp_millis() + wait_duration)
+                    .unwrap();
 
             Reservation {
                 time_to_act: retry_after.clone(),
@@ -71,10 +70,9 @@ impl<Store: Storage<FixedWindowState, FixedWindowState>> Policy for FixedWindowP
 
             state.add(Some(tokens), Some(&now));
 
-            let retry_after = LocalTime::timestamp_millis_opt(
-                &LocalTime,
-                now.timestamp_millis() + wait_duration
-            ).unwrap();
+            let retry_after =
+                LocalTime::timestamp_millis_opt(&LocalTime, now.timestamp_millis() + wait_duration)
+                    .unwrap();
 
             Reservation {
                 time_to_act: retry_after.clone(),
@@ -104,7 +102,7 @@ impl<'a, Store: Storage<FixedWindowState, FixedWindowState>> FixedWindowPolicy<'
         limit: usize,
         key: String,
         interval: Duration,
-        storage: &'a mut Store
+        storage: &'a mut Store,
     ) -> Result<Self, PolicyError> {
         if limit == 0 {
             return Err(PolicyError::ZeroLimitError);
@@ -118,7 +116,7 @@ impl<'a, Store: Storage<FixedWindowState, FixedWindowState>> FixedWindowPolicy<'
             limit,
             key,
             interval,
-            storage
+            storage,
         })
     }
 }
@@ -129,7 +127,7 @@ pub struct FixedWindowState {
     pub hit_count: usize,
     pub interval: i64, // chrono timestamp millis
     pub max_size: usize,
-    pub timer: i64
+    pub timer: i64,
 }
 
 impl State<FixedWindowState> for FixedWindowState {
@@ -149,7 +147,7 @@ impl FixedWindowState {
             hit_count: 0,
             interval: interval.num_milliseconds(),
             max_size,
-            timer: 0
+            timer: 0,
         }
     }
 
@@ -173,7 +171,7 @@ impl FixedWindowState {
         let now = now.timestamp_millis();
 
         if (now - self.timer) > self.interval {
-            return Some(self.max_size)
+            return Some(self.max_size);
         }
 
         if self.hit_count > self.max_size {
