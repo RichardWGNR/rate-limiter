@@ -2,6 +2,9 @@
 name = "rate-limiter"
 version = "0.1.0"
 edition = "2021"
+description = "A simple library for working with addresses on The Open Network (TON)."
+license = "Apache-2.0"
+repository = "https://github.com/RichardWGNR/rate-limiter"
 
 [dependencies]
 hashbrown = { version = "0.14.5" }
