@@ -5,8 +5,8 @@ use crate::error::ReserveError;
 use crate::storage::Storage;
 use crate::Reservation;
 
-pub use fixed_window::FixedWindowPolicy;
-pub use sliding_window::SlidingWindowPolicy;
+pub use fixed_window::{FixedWindowPolicy, FixedWindowState};
+pub use sliding_window::{SlidingWindowPolicy, SlidingWindowState};
 
 pub trait Policy {
     // reset
