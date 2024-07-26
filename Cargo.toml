@@ -1,5 +1,5 @@
 [package]
-name = "rate-limiter"
+name = "sf-rate-limiter"
 version = "0.1.0"
 edition = "2021"
 description = "Request Rate Limiter. The project is a port of Symfony Rate Limiter."
